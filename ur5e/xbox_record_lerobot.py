@@ -96,7 +96,7 @@ BUTTON_BACK, BUTTON_START = 6, 7
 # =========================================================
 RECORD_FPS = 30
 IMG_H, IMG_W = 240, 320
-CAMERA_NAMES = ["scene_cam", "top_cam", "wrist_cam"]
+CAMERA_NAMES = ["scene_cam", "front_cam", "wrist_cam"]
 
 STATE_NAMES = [
     "shoulder_pan", "shoulder_lift", "elbow",
@@ -489,8 +489,8 @@ def main():
                 ry = apply_deadzone(safe_get_axis(js, AXIS_RY))
 
                 # ================= 3. 更新 mocap target =================
-                data.mocap_pos[mocap_id, 0] += lx * LINEAR_SPEED * frame_dt
-                data.mocap_pos[mocap_id, 1] += -ly * LINEAR_SPEED * frame_dt
+                data.mocap_pos[mocap_id, 0] += ly * LINEAR_SPEED * frame_dt
+                data.mocap_pos[mocap_id, 1] += lx * LINEAR_SPEED * frame_dt
                 data.mocap_pos[mocap_id, 2] += -ry * LINEAR_SPEED * frame_dt
                 data.mocap_pos[mocap_id, 0] = np.clip(data.mocap_pos[mocap_id, 0], *WS_X)
                 data.mocap_pos[mocap_id, 1] = np.clip(data.mocap_pos[mocap_id, 1], *WS_Y)
