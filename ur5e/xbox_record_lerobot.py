@@ -137,26 +137,66 @@ def sample_point_in_zone(center_xy, radius, cube_half, yaw_margin=0.0):
     y = center_xy[1] + r * np.sin(theta)
     return np.array([x, y], dtype=np.float64)
 
-
 def randomize_rgb_cubes_in_fixed_zones(model, data):
     table_top_z = 0.42
     cube_half = 0.02
-    z = table_top_z + cube_half + 0.002
+    z = table_top_z + cube_half
 
     zones = {
-        "cube_red":   np.array([0.4, 0.0], dtype=np.float64),
-        "cube_green": np.array([0.4, 0.0], dtype=np.float64),
-        "cube_blue":  np.array([0.4, 0.0], dtype=np.float64),
+        "cube_red":   np.array([0.5,  0.10], dtype=np.float64),
+        "cube_green": np.array([0.5,  0.00], dtype=np.float64),
+        "cube_blue":  np.array([0.5, -0.10], dtype=np.float64),
     }
-    zone_radius = 0.2
+
+    zone_radius = 0.05
 
     for body_name, center_xy in zones.items():
         xy = sample_point_in_zone(center_xy, zone_radius, cube_half)
         yaw = np.random.uniform(-np.pi, np.pi)
         quat = yaw_to_quat(yaw)
+
         pos = np.array([xy[0], xy[1], z], dtype=np.float64)
         set_free_body_pose(model, data, body_name, pos, quat)
-        print(f"  [{body_name}] x={xy[0]:.3f}, y={xy[1]:.3f}, yaw={yaw:.3f}")
+
+        print(
+            f"  [{body_name}] "
+            f"x={xy[0]:.3f}, y={xy[1]:.3f}, yaw={yaw:.3f}"
+        )
+
+# def randomize_rgb_cubes_in_fixed_zones(model, data):
+#     table_top_z = 0.42
+#     cube_half = 0.02
+#     z = table_top_z + cube_half + 0.002
+#
+#     zones = {
+#         "cube_red":   np.array([0.4, 0.0], dtype=np.float64),
+#         "cube_green": np.array([0.4, 0.0], dtype=np.float64),
+#         "cube_blue":  np.array([0.4, 0.0], dtype=np.float64),
+#     }
+#     zone_radius = 0.2
+#
+#     for body_name, center_xy in zones.items():
+#         xy = sample_point_in_zone(center_xy, zone_radius, cube_half)
+#         yaw = np.random.uniform(-np.pi, np.pi)
+#         quat = yaw_to_quat(yaw)
+#         pos = np.array([xy[0], xy[1], z], dtype=np.float64)
+#         set_free_body_pose(model, data, body_name, pos, quat)
+#         print(f"  [{body_name}] x={xy[0]:.3f}, y={xy[1]:.3f}, yaw={yaw:.3f}")
+
+def reset_rgb_cubes_to_initial_pose(model, data):
+    init_poses = {
+        "cube_red":   np.array([0.5,  0.10, 0.43], dtype=np.float64),
+        "cube_green": np.array([0.5,  0.00, 0.43], dtype=np.float64),
+        "cube_blue":  np.array([0.5, -0.10, 0.43], dtype=np.float64),
+    }
+
+    # yaw = 0，对应无旋转
+    quat = yaw_to_quat(0.0)
+
+    for body_name, pos in init_poses.items():
+        set_free_body_pose(model, data, body_name, pos, quat)
+        print(f"  [{body_name}] reset to x={pos[0]:.3f}, y={pos[1]:.3f}, z={pos[2]:.3f}")
+
 
 
 def quat_mul_axis_angle(q, axis, angle):
@@ -272,8 +312,21 @@ def load_or_create_dataset(repo_id, root, fps, use_videos: bool = True):
     info_path = root / "meta" / "info.json"
 
     if info_path.exists():
-        print(f"[Dataset] 检测到已有数据集, 进入追加模式: {root}")
-        dataset = LeRobotDataset(repo_id, root=root)
+        print(f"[Dataset] 检测到已有数据集, 进入续录模式: {root}")
+
+        # 新版 LeRobot：必须用 resume() 才是可写模式
+        resume_fn = getattr(LeRobotDataset, "resume", None)
+        if callable(resume_fn):
+            dataset = LeRobotDataset.resume(
+                repo_id=repo_id,
+                root=root,
+                image_writer_processes=1,
+                image_writer_threads=2,
+            )
+        else:
+            # 兼容老版本 LeRobot
+            dataset = LeRobotDataset(repo_id, root=root)
+
     else:
         mode = "video (mp4)" if use_videos else "image (png)"
         print(f"[Dataset] 创建新数据集 [{mode}]: {root}")
@@ -285,12 +338,12 @@ def load_or_create_dataset(repo_id, root, fps, use_videos: bool = True):
             features=features,
             robot_type="ur5e_2f85",
             use_videos=use_videos,
-            # 关键: 用独立子进程编码视频, 避免和 MuJoCo OpenGL renderer
-            # 争抢资源导致 SIGSEGV
             image_writer_processes=1,
             image_writer_threads=2,
         )
+
     return dataset
+
 
 
 # =========================================================

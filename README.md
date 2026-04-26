@@ -9,7 +9,7 @@
 1. 采集数据集
 
 ```bash
-  python xbox_record_lerobot.py \
+  python ur5e/xbox_record_lerobot.py \
       --repo-id local/ur5e_pick_place \
       --root ./data/ur5e_pick_place \
       --task "pick and place the cubes onto the matching-color zones" \
